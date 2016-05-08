@@ -1,0 +1,97 @@
+#!/bin/bash
+SR=`xe sr-list name-label=NFS-BACKUP  | grep ^uuid | cut -f2 -d : | sed 's/ //g'`
+
+BACKUP_STORAGE="/var/run/sr-mount/$SR/"
+echo "cd $BACKUP_STORAGE "
+cd $BACKUP_STORAGE 
+
+function backup_go() {
+
+	VM_UUID=$1
+	VM_LABEL=$2
+	BKP_FREQ=$3
+	echo $VM_UUID
+	echo $VM_LABEL
+	echo $BKP_FREQ
+
+	if [ -e "$BACKUP_STORAGE$VM_LABEL"_"$BKP_FREQ.xva" ]
+		then
+		echo "Delete old backup $BACKUP_STORAGE$VM_LABEL"_"$BKP_FREQ.xva "
+		rm $BACKUP_STORAGE$VM_LABEL"_"$BKP_FREQ.xva
+	fi
+	
+	if [ ! -e "$BACKUP_STORAGE$VM_LABEL"_"$BKP_FREQ.xva" ]
+		then
+		echo "Delete OK! -  $BACKUP_STORAGE$VM_LABEL"_"$BKP_FREQ.xva "
+	fi
+
+	VM_SNAPSHOT_UUID=$(xe vm-snapshot uuid=$VM_UUID new-name-label="backup_"$VM_LABEL)
+	xe template-param-set is-a-template=false ha-always-run=false uuid=$VM_SNAPSHOT_UUID
+	xe vm-export vm=$VM_SNAPSHOT_UUID filename=$BACKUP_STORAGE$VM_LABEL"_"$BKP_FREQ.xva
+	xe vm-uninstall uuid=$VM_SNAPSHOT_UUID force=true
+
+}
+
+
+
+for VM_RUNNING_UUID in $(xe vm-list power-state=running is-control-domain=false resident-on=`xe host-list hostname=\`hostname\` |grep uuid|cut -d: -f2 |  sed 's/ //g'` | grep uuid |cut -d: -f2)
+	do
+	
+	VM_RUNNING_LABEL=$(xe vm-param-get uuid=$VM_RUNNING_UUID  param-name=name-label)
+	BKP_TYPE=$(xe vm-param-get uuid=$VM_RUNNING_UUID param-name=other-config param-key=XenCenter.CustomFields.backup)	
+	BKP_RETAIN=$(xe vm-param-get uuid=$VM_RUNNING_UUID param-name=other-config param-key=XenCenter.CustomFields.retain)	
+	
+	
+    if [[ "$BKP_TYPE" == "" || "$BKP_RETAIN" == "" ]]; then
+        echo "No schedule or retention set for XVA backup, skipping this VM"
+        BKP_SKIP=1
+    else
+        echo "VM XVA backup schedule : $BKP_TYPE"
+        echo "VM XVA retention       : $BKP_RETAIN previous snapshots"
+
+        if [ "$BKP_TYPE" == "daily" ]; then
+            BKP_SKIP=0
+        else
+            # If weekly, see if this is the correct day
+            if [ "$BKP_TYPE" == "weekly" ]; then
+                if [ "$(date +'%a')" == "Sun" ]; then
+                    echo "On correct day for weekly backups, running..."
+                    BKP_SKIP=0
+                else
+                    echo "Weekly backups scheduled on $WEEKLY_ON, skipping..."
+                    BKP_SKIP=1
+                fi
+            else
+                # If monthly, see if this is the correct day
+                if [ "$BKP_TYPE" == "monthly" ]; then
+                    if [[ "$(date +'%a')" == "Sun" && $(date '+%e') -le 7 ]]; then
+                        echo "On correct day for monthly backups, running..."
+                        BKP_SKIP=0
+                    else
+                        echo "Monthly backups scheduled on 1st $MONTHLY_ON, skipping..."
+                        BKP_SKIP=1
+                    fi
+                fi
+            fi
+        fi
+    fi
+	
+	
+
+	
+	if [ "$BKP_SKIP" == "0"   ]; then
+			echo "Starting backup daily for VM $VM_RUNNING_LABEL ($VM_RUNNING_LABEL)"
+			backup_go $VM_RUNNING_UUID $VM_RUNNING_LABEL $BKP_TYPE
+		
+	fi
+	
+	
+done 
+
+
+
+
+
+
+
+
