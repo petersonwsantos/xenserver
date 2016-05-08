@@ -1,7 +1,7 @@
-Scripts Xenserver
+#SCRIPTS XENSERVER
 
 
-UPDATE XENSERVER 
+#Update XenServer
 
 Syntax script: 
 [root@xenServer]# ./xsbackup name_hotfix  
