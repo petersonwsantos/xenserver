@@ -3,7 +3,7 @@ Scripts Xenserver
 
 UPDATE XENSERVER 
 
-Syntax: 
+Syntax:
 ./xsbackup name_hotfix  
 
 Parameter name_hotfix:    
