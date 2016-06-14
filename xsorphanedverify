@@ -1,0 +1,14 @@
+#!/bin/bash
+list=`/opt/xensource/bin/xe sr-list | grep uuid | awk -F: '{print $2}'`
+for item in $list
+do
+echo "==========================================="
+echo "SR uuid=$item"
+echo " "
+/opt/xensource/bin/xe sr-list uuid=$item
+echo "==========================================="
+echo "List of underlying VDIs:"
+echo "-------------------------------------------"
+/opt/xensource/bin/xe vdi-list sr-uuid=$item
+done
+
