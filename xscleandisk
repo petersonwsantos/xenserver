@@ -1,0 +1,7 @@
+echo "Antes"
+df -h | grep / | head -n 1
+find /var/patch -maxdepth 1 | grep [0-9] | xargs rm -f
+rm -rf /tmp/*.log
+rm -rf /var/log/*gz
+echo "Depois"
+df -h | grep / | head -n 1
