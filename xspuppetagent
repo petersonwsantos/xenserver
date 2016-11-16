@@ -1,10 +1,17 @@
+yum remove puppet-agent  -y
+yum remove puppetlabs-release-pc1  -y
+rm -rfv /opt/puppetlabs
+rm -rfv /etc/puppetlabs
+rpm -qa | grep puppet
+
 wget https://yum.puppetlabs.com/puppetlabs-release-pc1-el-5.noarch.rpm
-rpm -Uvh puppetlabs-release-pc1-el-5.noarch.rpm
-yum install puppet-agent
+rpm -hiv puppetlabs-release-pc1-el-5.noarch.rpm
+rm -fv puppetlabs-release-pc1*
+yum install puppet-agent -y 
 echo "" 
 echo "" 
 echo "type:" 
-echo "/opt/puppetlabs/bin/puppet agent -t "
+echo "/opt/puppetlabs/bin/puppet agent -t"
 echo "/opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true"
 echo "" 
 echo "Remove certificate from a previous installation, if necessary"
