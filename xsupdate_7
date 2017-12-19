@@ -1,0 +1,44 @@
+#!/bin/bash
+
+curl -# -L -R -o /tmp/updates.xml  http://updates.xensource.com/XenServer/updates.xml
+
+grep $1 /tmp/updates.xml  | grep ^"    <patch" | cut -d "\"" -f 10,12 --output-delimiter=" "   | while read var_name_patch patch_url
+do
+
+
+  if [[ -n $(xe patch-list name-label=$var_name_patch 2> /dev/null) ]]
+  then
+    echo $line1 "has aleady been installed"
+  else
+
+    mkdir /root/tmp
+    cd /root/tmp
+    patch_name_zip=$var_name_patch".zip"
+    echo "curl -z $patch_name_zip -O  --retry-delay 1 $patch_url"
+    curl -z $patch_name_zip -O  --retry-delay 1 $patch_url
+    mv `ls filedownlo*` $patch_name_zip
+    unzip  $patch_name_zip
+    echo "-----------------------------------------------------------------"
+    echo "  "
+    echo "                        $var_name_patch                          "
+    echo "  "
+    var_host_uuid=$(xe host-list hostname=`hostname` |grep uuid|cut -d: -f2 |  sed 's/ //g')
+
+    echo "1. Fazendo o Upload do patch $var_name_patch o servidor $var_host_uuid"
+    xe patch-upload file-name=$var_name_patch".xsupdate"
+    var_patch_uuid=$(xe patch-list name-label=$var_name_patch  | grep uuid | cut -d: -f2 | sed 's/ //g')
+
+    echo "2. Aplicando o patch $var_name_patch com id $var_patch_uuid"
+    xe patch-apply host-uuid=$var_host_uuid uuid=$var_patch_uuid
+
+    echo "3. Apagando o backup do patch $var_name_patch para liberar espaço no / "
+    rm -rfv /opt/xensource/patch-backup/$var_patch_uuid
+    rm -rfv  /root/tmp
+
+    echo "  "
+    echo "  "
+    echo "  "
+  fi
+
+  rm  -rfv /tmp/updates.xml
+done
